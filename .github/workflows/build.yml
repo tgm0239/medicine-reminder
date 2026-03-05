@@ -19,6 +19,19 @@ jobs:
         run: |
           pip install --user --upgrade buildozer cython
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+      # 设置 Android SDK 路径（buildozer 下载的位置）
+      - name: Set Android SDK path
+        run: echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+      # 预先创建 licenses 目录并写入哈希值（绕过交互式接受）
+      - name: Accept Android SDK licenses
+        run: |
+          mkdir -p $ANDROID_HOME/licenses
+          # android-sdk-license
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          # android-sdk-preview-license（这个正是导致失败的许可证）
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+          # intel-android-extra-license（可选，但加上无害）
+          echo "d975f751698a77b662f1254ddbeed3901e976f5a" > $ANDROID_HOME/licenses/intel-android-extra-license
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
