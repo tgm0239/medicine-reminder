@@ -42,3 +42,4 @@ icon.filename = %(source.dir)s/icon.png
 [buildozer]
 log_level = 2
 warn_on_root = 1
+android.build_tools = 33.0.2
