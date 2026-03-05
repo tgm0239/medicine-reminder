@@ -51,7 +51,10 @@ jobs:
       # 修改 buildozer.spec，固定 build-tools 版本
       - name: Pin build-tools version in buildozer.spec
         run: |
-          echo "android.build_tools = 33.0.2" >> buildozer.spec
+          # 删除所有 android.build_tools 行（避免重复）
+          sed -i '/^android.build_tools/d' buildozer.spec
+          # 在 [app] 部分下添加正确版本
+          sed -i '/^\[app\]/a android.build_tools = 33.0.2' buildozer.spec
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
