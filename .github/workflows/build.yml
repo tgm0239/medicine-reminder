@@ -19,31 +19,39 @@ jobs:
         run: |
           pip install --user --upgrade buildozer cython
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      # 设置 Android SDK 路径（手动安装）
-      - name: Set Android SDK path
+      # 创建 buildozer 期望的 SDK 目录
+      - name: Create SDK directory
         run: |
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk
+          cd /home/runner/.buildozer/android/platform/android-sdk
+      # 手动下载并安装 commandlinetools
       - name: Install Android SDK manually
         run: |
-          mkdir -p $ANDROID_HOME
-          cd $ANDROID_HOME
-          # 下载 commandlinetools (使用稳定版)
+          export ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
-          # 移动到正确的路径结构
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+          mv cmdline-tools latest
           # 将 sdkmanager 加入 PATH
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-          # 自动接受所有许可证
+          # 接受所有许可证
           yes | sdkmanager --licenses
-          # 安装必要的 SDK 组件
+          # 安装必要的 SDK 组件（稳定版本）
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-          # 创建 tools 目录的符号链接，以兼容旧的 buildozer 路径
+          # 为了兼容旧的 buildozer 路径，创建 tools/bin 软链接
           mkdir -p $ANDROID_HOME/tools/bin
           ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
+      # 设置环境变量让 buildozer 使用我们安装的 SDK
+      - name: Set Android environment variables
+        run: |
+          echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+      # 修改 buildozer.spec，固定 build-tools 版本
+      - name: Pin build-tools version in buildozer.spec
+        run: |
+          echo "android.build_tools = 33.0.2" >> buildozer.spec
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
