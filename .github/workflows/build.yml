@@ -43,18 +43,26 @@ jobs:
           # 为了兼容旧的 buildozer 路径，创建 tools/bin 软链接
           mkdir -p $ANDROID_HOME/tools/bin
           ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
-      # 设置环境变量让 buildozer 使用我们安装的 SDK
+      # 设置 Android 环境变量
       - name: Set Android environment variables
         run: |
           echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-      # 修改 buildozer.spec，固定 build-tools 版本
+      # ===== 新增：安装 autoconf-archive 并强制使用 buildozer 的 NDK =====
+      - name: Install autotools and fix NDK path
+        run: |
+          sudo apt update
+          sudo apt install -y autoconf-archive libtool-bin
+          # 设置 NDK 路径为 buildozer 下载的版本（r25b）
+          echo "ANDROID_NDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+          # 移除系统 NDK 的影响（可选）
+          # 不需要显式移除，环境变量优先级更高
+      # 修改 buildozer.spec，固定 build-tools 版本并确保 NDK 路径正确
       - name: Pin build-tools version in buildozer.spec
         run: |
-          # 删除所有 android.build_tools 行（避免重复）
-          sed -i '/^android.build_tools/d' buildozer.spec
-          # 在 [app] 部分下添加正确版本
-          sed -i '/^\[app\]/a android.build_tools = 33.0.2' buildozer.spec
+          echo "android.build_tools = 33.0.2" >> buildozer.spec
+          echo "android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
