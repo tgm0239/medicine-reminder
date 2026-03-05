@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-      # ===== 新增：安装 autoconf-archive 并强制使用 buildozer 的 NDK =====
+      # 安装 autoconf-archive 并强制使用 buildozer 的 NDK
       - name: Install autotools and fix NDK path
         run: |
           sudo apt update
@@ -56,13 +56,57 @@ jobs:
           # 设置 NDK 路径为 buildozer 下载的版本（r25b）
           echo "ANDROID_NDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-          # 移除系统 NDK 的影响（可选）
-          # 不需要显式移除，环境变量优先级更高
-      # 修改 buildozer.spec，固定 build-tools 版本并确保 NDK 路径正确
-      - name: Pin build-tools version in buildozer.spec
+      # ===== 关键修复：完全覆盖 buildozer.spec，确保格式正确 =====
+      - name: Write correct buildozer.spec
         run: |
-          echo "android.build_tools = 33.0.2" >> buildozer.spec
-          echo "android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
+          cat > buildozer.spec << 'EOF'
+[app]
+
+# 应用名称
+title = 吃药提醒
+
+# 包名
+package.name = medicinereminder
+package.domain = org.yourname
+
+# 源码目录
+source.dir = .
+source.include_exts = py,png,jpg,kv,ttf,java,xml
+
+# 版本号
+version = 1.0.0
+
+# 依赖库
+requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android
+
+# 屏幕方向
+orientation = portrait
+fullscreen = 0
+
+# Android 权限
+android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED
+
+# SDK/NDK 版本
+android.api = 33
+android.minapi = 21
+android.ndk = 25b
+android.sdk = 33
+android.build_tools = 33.0.2
+android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b
+
+# 包含 Java 源码
+android.add_src = .
+
+# 使用自定义 AndroidManifest
+android.manifest = AndroidManifest.tmpl.xml
+
+# 图标（如果有）
+icon.filename = %(source.dir)s/icon.png
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+EOF
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
