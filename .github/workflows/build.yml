@@ -14,24 +14,36 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev wget
       - name: Install buildozer
         run: |
           pip install --user --upgrade buildozer cython
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      # 设置 Android SDK 路径（buildozer 下载的位置）
+      # 设置 Android SDK 路径（手动安装）
       - name: Set Android SDK path
-        run: echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-      # 预先创建 licenses 目录并写入哈希值（绕过交互式接受）
-      - name: Accept Android SDK licenses
         run: |
-          mkdir -p $ANDROID_HOME/licenses
-          # android-sdk-license
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
-          # android-sdk-preview-license（这个正是导致失败的许可证）
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
-          # intel-android-extra-license（可选，但加上无害）
-          echo "d975f751698a77b662f1254ddbeed3901e976f5a" > $ANDROID_HOME/licenses/intel-android-extra-license
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+      - name: Install Android SDK manually
+        run: |
+          mkdir -p $ANDROID_HOME
+          cd $ANDROID_HOME
+          # 下载 commandlinetools (使用稳定版)
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          # 移动到正确的路径结构
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+          # 将 sdkmanager 加入 PATH
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          # 自动接受所有许可证
+          yes | sdkmanager --licenses
+          # 安装必要的 SDK 组件
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          # 创建 tools 目录的符号链接，以兼容旧的 buildozer 路径
+          mkdir -p $ANDROID_HOME/tools/bin
+          ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
