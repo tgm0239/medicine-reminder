@@ -58,16 +58,19 @@ jobs:
           echo "[buildozer]" >> buildozer.spec
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
-      - name: Build APK with Buildozer (non-root)
+      - name: Build APK with Buildozer (non-root in venv)
         run: |
           # 创建一个普通用户 builder
           useradd -m -s /bin/bash builder
           # 将工作目录的所有权给 builder
           chown -R builder:builder $GITHUB_WORKSPACE
-          # 切换到 builder 用户并安装 buildozer 和 cython
+          # 切换到 builder 用户，创建虚拟环境，安装 buildozer 和 cython，然后运行构建
           sudo -u builder bash -c "
-            export PATH=\$HOME/.local/bin:\$PATH
-            pip install --user --upgrade buildozer cython
+            cd /home/builder
+            python3 -m venv buildozer-venv
+            source buildozer-venv/bin/activate
+            pip install --upgrade pip wheel
+            pip install buildozer cython
             cd $GITHUB_WORKSPACE
             buildozer -v android debug
           "
