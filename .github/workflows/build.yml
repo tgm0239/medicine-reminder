@@ -19,12 +19,8 @@ jobs:
         run: |
           pip install --user --upgrade buildozer cython
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      # 创建 buildozer 期望的 SDK 目录
       - name: Create SDK directory
-        run: |
-          mkdir -p /home/runner/.buildozer/android/platform/android-sdk
-          cd /home/runner/.buildozer/android/platform/android-sdk
-      # 手动下载并安装 commandlinetools
+        run: mkdir -p /home/runner/.buildozer/android/platform/android-sdk
       - name: Install Android SDK manually
         run: |
           export ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
@@ -33,101 +29,80 @@ jobs:
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
-          # 将 sdkmanager 加入 PATH
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-          # 接受所有许可证
           yes | sdkmanager --licenses
-          # 安装必要的 SDK 组件（稳定版本）
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-          # 为了兼容旧的 buildozer 路径，创建 tools/bin 软链接
           mkdir -p $ANDROID_HOME/tools/bin
           ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
-      # 设置 Android 环境变量
       - name: Set Android environment variables
         run: |
           echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-      # 设置 NDK 路径为 buildozer 下载的版本（r25b）
       - name: Set NDK path
         run: |
           echo "ANDROID_NDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-      # 写入正确的 buildozer.spec
-      - name: Write correct buildozer.spec
+      # 使用多行 echo 写入 buildozer.spec，避免 YAML 复杂语法
+      - name: Write buildozer.spec
         run: |
-          cat > buildozer.spec << 'EOF'
-  [app]
-
-# 应用名称
- title = 吃药提醒
-
-# 包名
-package.name = medicinereminder
-package.domain = org.yourname
-
-# 源码目录
-source.dir = .
-source.include_exts = py,png,jpg,kv,ttf,java,xml
-
-# 版本号
-version = 1.0.0
-
-# 依赖库
-requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android
-
-# 屏幕方向
-orientation = portrait
-fullscreen = 0
-
-# Android 权限
-android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED
-
-# SDK/NDK 版本
-android.api = 33
-android.minapi = 21
-android.ndk = 25b
-android.sdk = 33
-android.build_tools = 33.0.2
-android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b
-
-# 包含 Java 源码
-android.add_src = .
-
-# 使用自定义 AndroidManifest
-android.manifest = AndroidManifest.tmpl.xml
-
-# 图标（如果有）
-icon.filename = %(source.dir)s/icon.png
-
-[buildozer]
-log_level = 2
-warn_on_root = 1
-EOF
-      # ===== 关键修复：确保 autotools 宏文件可用 =====
+          echo "[app]" > buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 应用名称" >> buildozer.spec
+          echo "title = 吃药提醒" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 包名" >> buildozer.spec
+          echo "package.name = medicinereminder" >> buildozer.spec
+          echo "package.domain = org.yourname" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 源码目录" >> buildozer.spec
+          echo "source.dir = ." >> buildozer.spec
+          echo "source.include_exts = py,png,jpg,kv,ttf,java,xml" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 版本号" >> buildozer.spec
+          echo "version = 1.0.0" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 依赖库" >> buildozer.spec
+          echo "requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 屏幕方向" >> buildozer.spec
+          echo "orientation = portrait" >> buildozer.spec
+          echo "fullscreen = 0" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# Android 权限" >> buildozer.spec
+          echo "android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# SDK/NDK 版本" >> buildozer.spec
+          echo "android.api = 33" >> buildozer.spec
+          echo "android.minapi = 21" >> buildozer.spec
+          echo "android.ndk = 25b" >> buildozer.spec
+          echo "android.sdk = 33" >> buildozer.spec
+          echo "android.build_tools = 33.0.2" >> buildozer.spec
+          echo "android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 包含 Java 源码" >> buildozer.spec
+          echo "android.add_src = ." >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 使用自定义 AndroidManifest" >> buildozer.spec
+          echo "android.manifest = AndroidManifest.tmpl.xml" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 图标（如果有）" >> buildozer.spec
+          echo "icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "[buildozer]" >> buildozer.spec
+          echo "log_level = 2" >> buildozer.spec
+          echo "warn_on_root = 1" >> buildozer.spec
+      # 修复 autotools 环境
       - name: Fix autotools environment
         run: |
           sudo apt update
           sudo apt install -y autoconf automake libtool pkg-config autoconf-archive
-          # 查找 libtool 的 m4 目录（通常为 /usr/share/aclocal 或 /usr/share/libtool/m4）
           LIBTOOL_M4=$(dpkg -L libtool | grep 'ltmain.m4' | xargs dirname)
           if [ -z "$LIBTOOL_M4" ]; then
             LIBTOOL_M4=$(dpkg -L libtool | grep 'ltversion.m4' | xargs dirname)
           fi
+          echo "ACLOCAL_PATH=$LIBTOOL_M4:/usr/share/aclocal" >> $GITHUB_ENV
           echo "libtool m4 directory: $LIBTOOL_M4"
-          export ACLOCAL_PATH="$LIBTOOL_M4:/usr/share/aclocal"
-          echo "ACLOCAL_PATH=$ACLOCAL_PATH" >> $GITHUB_ENV
-          # 验证宏文件是否存在
-          echo "Checking for lt*.m4 in ACLOCAL_PATH:"
-          for dir in $(echo $ACLOCAL_PATH | tr ':' ' '); do
-            ls -l $dir/lt*.m4 2>/dev/null || true
-          done
-          # 确保 lt_sys_symbol_uscore 宏可用（通过 grep 检查）
-          if grep -r "LT_SYS_SYMBOL_USCORE" $LIBTOOL_M4 /usr/share/aclocal 2>/dev/null; then
-            echo "Macro LT_SYS_SYMBOL_USCORE found."
-          else
-            echo "Warning: LT_SYS_SYMBOL_USCORE not found in m4 files. This may cause build failure."
-          fi
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
