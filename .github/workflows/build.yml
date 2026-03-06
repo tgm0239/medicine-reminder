@@ -10,6 +10,56 @@ jobs:
       options: --user root
     steps:
       - uses: actions/checkout@v4
+      - name: Write correct buildozer.spec
+        run: |
+          cat > buildozer.spec << 'EOF'
+[app]
+
+# 应用名称
+title = 吃药提醒
+
+# 包名
+package.name = medicinereminder
+package.domain = org.yourname
+
+# 源码目录
+source.dir = .
+source.include_exts = py,png,jpg,kv,ttf,java,xml
+
+# 版本号
+version = 1.0.0
+
+# 依赖库
+requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android
+
+# 屏幕方向
+orientation = portrait
+fullscreen = 0
+
+# Android 权限
+android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED
+
+# SDK/NDK 版本
+android.api = 33
+android.minapi = 21
+android.ndk = 25b
+android.sdk = 33
+android.build_tools = 33.0.2
+android.ndk_path = /home/user/.buildozer/android/platform/android-ndk-r25b
+
+# 包含 Java 源码
+android.add_src = .
+
+# 使用自定义 AndroidManifest
+android.manifest = AndroidManifest.tmpl.xml
+
+# 图标（如果有）
+icon.filename = %(source.dir)s/icon.png
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+EOF
       - name: Build APK with Buildozer
         run: |
           cd $GITHUB_WORKSPACE
