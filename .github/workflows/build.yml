@@ -58,10 +58,16 @@ jobs:
           echo "[buildozer]" >> buildozer.spec
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
-      - name: Build APK with Buildozer
+      - name: Build APK with Buildozer (non-root)
         run: |
-          cd $GITHUB_WORKSPACE
-          buildozer -v android debug
+          # 创建一个普通用户 builder
+          useradd -m -s /bin/bash builder
+          # 将工作目录和 buildozer 相关目录的所有权给 builder
+          chown -R builder:builder $GITHUB_WORKSPACE
+          chown -R builder:builder /home/user/.buildozer
+          chown -R builder:builder /home/user/.venv
+          # 切换到 builder 用户并运行 buildozer（使用绝对路径）
+          sudo -u builder -i bash -c "cd $GITHUB_WORKSPACE && /home/user/.venv/bin/buildozer -v android debug"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
