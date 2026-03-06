@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 写入正确的 buildozer.spec
+      # 写入正确的 buildozer.spec（逐行 echo，避免 YAML 错误）
       - name: Write correct buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
@@ -60,7 +60,7 @@ jobs:
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
 
-      # 安装 curl 并手动设置 Android SDK（以 root 身份）
+      # 以 root 身份安装必要工具并手动下载 Android SDK（避免 wget 缺失）
       - name: Setup Android SDK (as root)
         run: |
           apt-get update && apt-get install -y curl unzip
@@ -70,7 +70,9 @@ jobs:
           curl -O https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
+          # 接受所有许可证
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          # 安装必要的构建工具
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       # 创建 builder 用户并设置权限
@@ -80,14 +82,14 @@ jobs:
           chown -R builder:builder $GITHUB_WORKSPACE
           chown -R builder:builder /home/user/.buildozer
 
-      # 以 builder 用户运行构建
+      # 以 builder 用户身份构建 APK
       - name: Build APK as builder
         run: |
           sudo -u builder bash -c "
             export ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
             export PATH=\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH
             cd $GITHUB_WORKSPACE
-            # 创建并激活虚拟环境
+            # 创建 Python 虚拟环境并安装 buildozer
             python3 -m venv /home/builder/buildozer-venv
             source /home/builder/buildozer-venv/bin/activate
             pip install --upgrade pip setuptools wheel
