@@ -5,13 +5,108 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: kivy/buildozer:latest
+      options: --user root
     steps:
       - uses: actions/checkout@v4
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        with:
-          workdir: .
-          buildozer_version: stable
+
+      # 写入正确的 buildozer.spec
+      - name: Write correct buildozer.spec
+        run: |
+          cat > buildozer.spec << 'EOF'
+[app]
+
+# 应用名称
+title = 吃药提醒
+
+# 包名
+package.name = medicinereminder
+package.domain = org.yourname
+
+# 源码目录
+source.dir = .
+source.include_exts = py,png,jpg,kv,ttf,java,xml
+
+# 版本号
+version = 1.0.0
+
+# 依赖库
+requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android
+
+# 屏幕方向
+orientation = portrait
+fullscreen = 0
+
+# Android 权限
+android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED
+
+# SDK/NDK 版本
+android.api = 33
+android.minapi = 21
+android.ndk = 25b
+android.sdk = 33
+android.build_tools = 33.0.2
+
+# 包含 Java 源码
+android.add_src = .
+
+# 使用自定义 AndroidManifest
+android.manifest = AndroidManifest.tmpl.xml
+
+# 图标（如果有）
+icon.filename = %(source.dir)s/icon.png
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+EOF
+
+      # 以 root 身份初始化 SDK 并接受所有许可证
+      - name: Accept Android SDK licenses (as root)
+        run: |
+          export ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
+          # 确保 sdkmanager 可用
+          if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            echo "SDK not found, forcing buildozer to download it first"
+            # 临时运行一次 buildozer 让它下载 SDK（但会卡在许可证）
+            # 我们手动下载并安装
+            mkdir -p $ANDROID_HOME/cmdline-tools
+            cd $ANDROID_HOME/cmdline-tools
+            wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+            unzip -q commandlinetools-linux-9477386_latest.zip
+            mv cmdline-tools latest
+          fi
+          # 接受所有许可证
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          # 安装必需的构建工具（避免预览版）
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # 创建 builder 用户并设置权限
+      - name: Create builder user and set permissions
+        run: |
+          useradd -m -s /bin/bash builder
+          chown -R builder:builder $GITHUB_WORKSPACE
+          # 将 SDK 目录权限给 builder
+          chown -R builder:builder /home/user/.buildozer
+
+      # 以 builder 用户运行构建（使用虚拟环境）
+      - name: Build APK with Buildozer (as builder)
+        run: |
+          sudo -u builder bash -c "
+            export ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
+            export PATH=\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH
+            cd $GITHUB_WORKSPACE
+            # 创建并激活虚拟环境
+            python3 -m venv /home/builder/buildozer-venv
+            source /home/builder/buildozer-venv/bin/activate
+            pip install --upgrade pip setuptools wheel
+            pip install buildozer cython
+            # 运行构建
+            buildozer -v android debug
+          "
+
+      # 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
