@@ -7,13 +7,119 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          workdir: .
-          buildozer_version: stable
+          python-version: '3.8'
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev wget
+      - name: Install buildozer
+        run: |
+          pip install --user --upgrade buildozer cython
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Create SDK directory
+        run: mkdir -p /home/runner/.buildozer/android/platform/android-sdk
+      - name: Install Android SDK manually
+        run: |
+          export ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools latest
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          mkdir -p $ANDROID_HOME/tools/bin
+          ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
+      - name: Set Android environment variables
+        run: |
+          echo "ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+      - name: Set NDK path
+        run: |
+          echo "ANDROID_NDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+      # 写入 buildozer.spec
+      - name: Write buildozer.spec
+        run: |
+          echo "[app]" > buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 应用名称" >> buildozer.spec
+          echo "title = 吃药提醒" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 包名" >> buildozer.spec
+          echo "package.name = medicinereminder" >> buildozer.spec
+          echo "package.domain = org.yourname" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 源码目录" >> buildozer.spec
+          echo "source.dir = ." >> buildozer.spec
+          echo "source.include_exts = py,png,jpg,kv,ttf,java,xml" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 版本号" >> buildozer.spec
+          echo "version = 1.0.0" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 依赖库" >> buildozer.spec
+          echo "requirements = python3,kivy,sqlite3,plyer,pyjnius,pygame,android" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 屏幕方向" >> buildozer.spec
+          echo "orientation = portrait" >> buildozer.spec
+          echo "fullscreen = 0" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# Android 权限" >> buildozer.spec
+          echo "android.permissions = INTERNET, VIBRATE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# SDK/NDK 版本" >> buildozer.spec
+          echo "android.api = 33" >> buildozer.spec
+          echo "android.minapi = 21" >> buildozer.spec
+          echo "android.ndk = 25b" >> buildozer.spec
+          echo "android.sdk = 33" >> buildozer.spec
+          echo "android.build_tools = 33.0.2" >> buildozer.spec
+          echo "android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 包含 Java 源码" >> buildozer.spec
+          echo "android.add_src = ." >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 使用自定义 AndroidManifest" >> buildozer.spec
+          echo "android.manifest = AndroidManifest.tmpl.xml" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "# 图标（如果有）" >> buildozer.spec
+          echo "icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
+          echo "" >> buildozer.spec
+          echo "[buildozer]" >> buildozer.spec
+          echo "log_level = 2" >> buildozer.spec
+          echo "warn_on_root = 1" >> buildozer.spec
+      # 彻底修复 autotools 环境，包含 libtool 的 m4 目录
+      - name: Fix autotools environment
+        run: |
+          sudo apt update
+          sudo apt install -y autoconf automake libtool pkg-config autoconf-archive
+          # 设置 ACLOCAL_PATH 同时包含 aclocal 和 libtool 的 m4 目录
+          LIBTOOL_M4_DIR="/usr/share/libtool/m4"
+          ACLOCAL_DIR="/usr/share/aclocal"
+          if [ -d "$LIBTOOL_M4_DIR" ]; then
+            ACLOCAL_PATH="$ACLOCAL_DIR:$LIBTOOL_M4_DIR"
+          else
+            ACLOCAL_PATH="$ACLOCAL_DIR"
+          fi
+          echo "ACLOCAL_PATH=$ACLOCAL_PATH" >> $GITHUB_ENV
+          echo "ACLOCAL_PATH set to: $ACLOCAL_PATH"
+          # 验证宏文件
+          echo "Checking for LT_SYS_SYMBOL_USCORE macro..."
+          if grep -r "LT_SYS_SYMBOL_USCORE" $ACLOCAL_PATH 2>/dev/null; then
+            echo "Macro found."
+          else
+            echo "Warning: Macro not found in $ACLOCAL_PATH. This may cause build failure."
+          fi
+      - name: Build APK
+        run: |
+          cd $GITHUB_WORKSPACE
+          buildozer -v android debug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: ./bin/*.apk
+          path: bin/*.apk
