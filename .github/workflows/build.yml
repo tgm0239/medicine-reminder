@@ -69,7 +69,7 @@ jobs:
             cd /home/builder
             python3 -m venv buildozer-venv
             source buildozer-venv/bin/activate
-            pip install --upgrade pip wheel
+            pip install --upgrade pip setuptools wheel
             pip install buildozer cython
             cd $GITHUB_WORKSPACE
             buildozer -v android debug
