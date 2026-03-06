@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "ANDROID_NDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-      # 使用多行 echo 写入 buildozer.spec，避免 YAML 复杂语法
+      # 使用多行 echo 写入 buildozer.spec
       - name: Write buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
@@ -92,17 +92,29 @@ jobs:
           echo "[buildozer]" >> buildozer.spec
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
-      # 修复 autotools 环境
+      # 修复 autotools 环境（更稳健的方式）
       - name: Fix autotools environment
         run: |
           sudo apt update
           sudo apt install -y autoconf automake libtool pkg-config autoconf-archive
-          LIBTOOL_M4=$(dpkg -L libtool | grep 'ltmain.m4' | xargs dirname)
-          if [ -z "$LIBTOOL_M4" ]; then
-            LIBTOOL_M4=$(dpkg -L libtool | grep 'ltversion.m4' | xargs dirname)
+          # 确定 libtool m4 目录（常见位置）
+          M4_DIRS=""
+          if [ -d "/usr/share/libtool/m4" ]; then
+            M4_DIRS="/usr/share/libtool/m4"
           fi
-          echo "ACLOCAL_PATH=$LIBTOOL_M4:/usr/share/aclocal" >> $GITHUB_ENV
-          echo "libtool m4 directory: $LIBTOOL_M4"
+          if [ -d "/usr/share/aclocal" ]; then
+            if [ -n "$M4_DIRS" ]; then
+              M4_DIRS="$M4_DIRS:/usr/share/aclocal"
+            else
+              M4_DIRS="/usr/share/aclocal"
+            fi
+          fi
+          if [ -z "$M4_DIRS" ]; then
+            echo "Error: Could not find libtool m4 directories"
+            exit 1
+          fi
+          echo "ACLOCAL_PATH=$M4_DIRS" >> $GITHUB_ENV
+          echo "Using ACLOCAL_PATH=$M4_DIRS"
       - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
