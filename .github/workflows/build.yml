@@ -44,7 +44,7 @@ jobs:
           echo "android.ndk = 25b" >> buildozer.spec
           echo "android.sdk = 33" >> buildozer.spec
           echo "android.build_tools = 33.0.2" >> buildozer.spec
-          echo "android.ndk_path = /home/user/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
+          echo "# android.ndk_path = /home/user/.buildozer/android/platform/android-ndk-r25b" >> buildozer.spec
           echo "" >> buildozer.spec
           echo "# 包含 Java 源码" >> buildozer.spec
           echo "android.add_src = ." >> buildozer.spec
@@ -62,12 +62,10 @@ jobs:
         run: |
           # 创建一个普通用户 builder
           useradd -m -s /bin/bash builder
-          # 将工作目录和 buildozer 相关目录的所有权给 builder
+          # 将工作目录的所有权给 builder
           chown -R builder:builder $GITHUB_WORKSPACE
-          chown -R builder:builder /home/user/.buildozer
-          chown -R builder:builder /home/user/.venv
-          # 切换到 builder 用户并运行 buildozer（使用绝对路径）
-          sudo -u builder -i bash -c "cd $GITHUB_WORKSPACE && /home/user/.venv/bin/buildozer -v android debug"
+          # 切换到 builder 用户并运行 buildozer
+          sudo -u builder bash -c "cd $GITHUB_WORKSPACE && /home/user/.venv/bin/buildozer -v android debug"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
