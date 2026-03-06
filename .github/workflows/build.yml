@@ -57,10 +57,10 @@ jobs:
       - name: Write correct buildozer.spec
         run: |
           cat > buildozer.spec << 'EOF'
-[app]
+  [app]
 
 # 应用名称
-title = 吃药提醒
+ title = 吃药提醒
 
 # 包名
 package.name = medicinereminder
