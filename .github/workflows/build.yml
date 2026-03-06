@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 写入正确的 buildozer.spec（避免 heredoc）
+      # 写入正确的 buildozer.spec
       - name: Write correct buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
@@ -60,8 +60,8 @@ jobs:
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
 
-      # 安装 curl 并手动设置 Android SDK（避免 wget 缺失）
-      - name: Install curl and setup Android SDK
+      # 安装 curl 并手动设置 Android SDK（以 root 身份）
+      - name: Setup Android SDK (as root)
         run: |
           apt-get update && apt-get install -y curl unzip
           export ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
@@ -70,17 +70,30 @@ jobs:
           curl -O https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
-          # 接受所有许可证
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          # 安装构建工具（稳定版）
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # 设置环境变量允许 root 运行 buildozer，然后构建
-      - name: Build APK with Buildozer
+      # 创建 builder 用户并设置权限
+      - name: Create builder user and set permissions
         run: |
-          export BUILDOZER_ALLOW_ROOT=1
-          cd $GITHUB_WORKSPACE
-          buildozer -v android debug
+          useradd -m -s /bin/bash builder
+          chown -R builder:builder $GITHUB_WORKSPACE
+          chown -R builder:builder /home/user/.buildozer
+
+      # 以 builder 用户运行构建
+      - name: Build APK as builder
+        run: |
+          sudo -u builder bash -c "
+            export ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
+            export PATH=\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH
+            cd $GITHUB_WORKSPACE
+            # 创建并激活虚拟环境
+            python3 -m venv /home/builder/buildozer-venv
+            source /home/builder/buildozer-venv/bin/activate
+            pip install --upgrade pip setuptools wheel
+            pip install buildozer cython
+            buildozer -v android debug
+          "
 
       # 上传 APK
       - name: Upload APK
