@@ -67,7 +67,6 @@ public class ReminderReceiver extends BroadcastReceiver {
     private void showNotification(Context context, String name, String dosage, String time, int requestCode) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // 创建通知渠道（Android 8+）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
@@ -80,7 +79,6 @@ public class ReminderReceiver extends BroadcastReceiver {
             manager.createNotificationChannel(channel);
         }
 
-        // 点击通知后打开应用
         Intent intent = new Intent(context, PythonActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -90,14 +88,13 @@ public class ReminderReceiver extends BroadcastReceiver {
             PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
 
-        // 构建通知
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(context.getApplicationInfo().icon)
             .setContentTitle("⏰ 吃药提醒")
             .setContentText(name + " · " + dosage + " (" + time + ")")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(pendingIntent, true)  // 锁屏显示
+            .setFullScreenIntent(pendingIntent, true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent);
 
