@@ -294,9 +294,8 @@ class TodayScheduleScreen(BoxLayout):
             self.list_layout.add_widget(card)
 
 
-# ========== 【7】时间点编辑器——文字水平居中，通过padding模拟垂直居中 ==========
+# ========== 时间点编辑器（纯白底板 + 鲜亮按钮）==========
 class TimePointRow(BoxLayout):
-    """时间点编辑器单行——鲜亮按钮，文字水平居中，垂直方向通过padding调整"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
@@ -305,35 +304,32 @@ class TimePointRow(BoxLayout):
         self.spacing = dp(8)
         self.padding = [dp(0), dp(2), dp(0), dp(2)]
 
-        # 时间输入框：水平居中，垂直通过padding微调
         self.time_input = TextInput(
             text='08:00',
             size_hint_x=0.2,
             multiline=False,
             hint_text='时间',
-            halign='center',          # 水平居中
+            halign='center',
             background_color=(0.98, 0.98, 0.98, 1),
             foreground_color=(0, 0, 0, 1),
             font_size=dp(16),
-            padding=[dp(6), dp(12)]   # 加大上下内边距，模拟垂直居中
+            padding=[dp(6), dp(12)]
         )
         self.add_widget(self.time_input)
 
-        # 剂量输入框：水平居中，垂直通过padding微调
         self.dosage_input = TextInput(
             text='',
             size_hint_x=0.2,
             multiline=False,
             hint_text='剂量',
-            halign='center',          # 水平居中
+            halign='center',
             background_color=(0.98, 0.98, 0.98, 1),
             foreground_color=(0, 0, 0, 1),
             font_size=dp(16),
-            padding=[dp(6), dp(12)]   # 加大上下内边距，模拟垂直居中
+            padding=[dp(6), dp(12)]
         )
         self.add_widget(self.dosage_input)
 
-        # 每天/工作日/周末 按钮（鲜亮蓝色）
         self.day_btn = Button(
             text='每天',
             size_hint_x=0.2,
@@ -346,21 +342,19 @@ class TimePointRow(BoxLayout):
         self.add_widget(self.day_btn)
         self.selected_days = [0, 1, 2, 3, 4, 5, 6]
 
-        # 说明输入框：水平居中，垂直通过padding微调
         self.notes_input = TextInput(
             text='',
             size_hint_x=0.25,
             multiline=False,
             hint_text='说明',
-            halign='center',          # 水平居中
+            halign='center',
             background_color=(0.98, 0.98, 0.98, 1),
             foreground_color=(0, 0, 0, 1),
             font_size=dp(16),
-            padding=[dp(6), dp(12)]   # 加大上下内边距，模拟垂直居中
+            padding=[dp(6), dp(12)]
         )
         self.add_widget(self.notes_input)
 
-        # 删除按钮（鲜红色，文字「删除」）
         del_btn = Button(
             text='删除',
             size_hint_x=0.15,
@@ -393,7 +387,6 @@ class TimePointRow(BoxLayout):
 
 
 class ScheduleEditorPopup(Popup):
-    """时间安排编辑器弹窗——纯白明亮底板"""
     def __init__(self, medicine_name='', medicine_id=None, current_schedule=None, **kwargs):
         super().__init__(**kwargs)
         self.title = f'⏰ 时间安排 - {medicine_name}'
@@ -401,7 +394,6 @@ class ScheduleEditorPopup(Popup):
         self.medicine_id = medicine_id
         self.schedule = None
 
-        # 纯白明亮背景
         self.background = ''
         self.background_color = (1, 1, 1, 1)
         self.separator_color = (0.2, 0.6, 1.0, 1)
@@ -412,7 +404,6 @@ class ScheduleEditorPopup(Popup):
             padding=dp(15),
             spacing=dp(12)
         )
-        # 白色背景填充
         with main_layout.canvas.before:
             Color(1, 1, 1, 1)
             self.rect = Rectangle(pos=main_layout.pos, size=main_layout.size)
@@ -527,14 +518,13 @@ class ScheduleEditorPopup(Popup):
         popup.open()
 
 
-# ========== 【8】主应用类（核心逻辑完全保留）==========
+# ========== 【7】主应用类（核心逻辑）==========
 class MedicineReminderApp(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.db = MedicineDatabase()
         self.today_screen = None
 
-        # 自动提醒跟踪
         self.reminder_tracker = {}
         self.taken_today = set()
         self.last_check_date = None
@@ -554,7 +544,7 @@ class MedicineReminderApp(App):
         if platform == 'android':
             self.show_toast('后台提醒已设置')
 
-    # ---------- 提醒核心逻辑（三次重试+漏服）----------
+    # ---------- 提醒核心逻辑 ----------
     def check_reminders(self, dt):
         import datetime
         now = datetime.datetime.now()
@@ -649,7 +639,7 @@ class MedicineReminderApp(App):
         self.show_toast('已记录服用')
         self.refresh_today()
 
-    # ---------- 后台闹钟（Android AlarmManager）----------
+    # ---------- 后台闹钟 ----------
     def schedule_alarms_for_medicine(self, medicine_id, schedule):
         if platform != 'android':
             return
@@ -754,7 +744,7 @@ class MedicineReminderApp(App):
         editor.bind(on_dismiss=lambda x: self.refresh_today())
         editor.open()
 
-    # ---------- 历史记录 + 导出CSV ----------
+    # ---------- 历史记录 + 导出 ----------
     def open_history(self):
         import sqlite3
         conn = sqlite3.connect(self.db.db_name)
