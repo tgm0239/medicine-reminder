@@ -27,28 +27,19 @@ jobs:
           echo "android.ndk = 25b" >> buildozer.spec
           echo "android.sdk = 33" >> buildozer.spec
           echo "android.build_tools = 33.0.2" >> buildozer.spec
-          echo "android.archs = arm64-v8a" >> buildozer.spec  # 只编译 64 位架构
           echo "android.add_src = ." >> buildozer.spec
           echo "android.manifest = AndroidManifest.tmpl.xml" >> buildozer.spec
-          echo "icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
+          echo "# icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
           echo "" >> buildozer.spec
           echo "[buildozer]" >> buildozer.spec
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
       - name: Build APK with Buildozer
-        timeout-minutes: 30
         run: |
           cd $GITHUB_WORKSPACE
-          yes | buildozer -v android debug 2>&1 | tee build.log
+          yes | buildozer -v android debug
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: ./bin/*.apk
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
