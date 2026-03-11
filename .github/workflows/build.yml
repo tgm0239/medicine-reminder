@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 写入正确的 buildozer.spec（注意 icon 行已被注释）
+      # 写入正确的 buildozer.spec（已移除 pygame，注释 icon）
       - name: Write correct buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
@@ -64,8 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: |
-            $(cat apk_list.txt)
+          path: $(cat apk_list.txt)
 
       # 如果构建失败且没有 APK，上传完整日志以便调试
       - name: Upload full build log on failure
