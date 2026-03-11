@@ -35,10 +35,31 @@ jobs:
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
       - name: Build APK with Buildozer
+        id: build
+        continue-on-error: true
         run: |
           cd $GITHUB_WORKSPACE
-          yes | buildozer -v android debug
-      - name: Upload APK
+          yes | buildozer -v android debug 2>&1 | tee full_build.log
+      - name: Extract error lines on failure
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "Build failed. Extracting error lines..."
+          grep -i -E 'error|failed|traceback|exception' full_build.log | tail -50 > error_summary.txt
+          echo "Error summary saved to error_summary.txt"
+      - name: Upload error summary on failure
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-summary
+          path: error_summary.txt
+      - name: Upload full build log on failure
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-build-log
+          path: full_build.log
+      - name: Upload APK on success
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
