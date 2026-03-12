@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 写入正确的 buildozer.spec（已移除 pygame，注释 icon）
+      # 写入正确的 buildozer.spec（只编译 arm64-v8a）
       - name: Write correct buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
@@ -29,6 +29,7 @@ jobs:
           echo "android.ndk = 25b" >> buildozer.spec
           echo "android.sdk = 33" >> buildozer.spec
           echo "android.build_tools = 33.0.2" >> buildozer.spec
+          echo "android.archs = arm64-v8a" >> buildozer.spec
           echo "android.add_src = ." >> buildozer.spec
           echo "android.manifest = AndroidManifest.tmpl.xml" >> buildozer.spec
           echo "# icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
@@ -37,15 +38,16 @@ jobs:
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
 
-      # 构建 APK（即使失败也继续，用于后续收集日志）
+      # 构建 APK（超时 30 分钟）
       - name: Build APK with Buildozer
         id: build
         continue-on-error: true
+        timeout-minutes: 30
         run: |
           cd $GITHUB_WORKSPACE
           yes | buildozer -v android debug 2>&1 | tee full_build.log
 
-      # 查找所有生成的 APK 文件
+      # 查找 APK 文件
       - name: Find APK files
         id: find_apk
         run: |
@@ -58,7 +60,7 @@ jobs:
             echo "found=false" >> $GITHUB_OUTPUT
           fi
 
-      # 如果找到 APK 文件，将它们打包上传
+      # 如果找到 APK，上传
       - name: Upload APK
         if: steps.find_apk.outputs.found == 'true'
         uses: actions/upload-artifact@v4
@@ -66,15 +68,7 @@ jobs:
           name: app-debug
           path: $(cat apk_list.txt)
 
-      # 如果构建失败且没有 APK，上传完整日志以便调试
-      - name: Upload full build log on failure
-        if: steps.build.outcome == 'failure' && steps.find_apk.outputs.found == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-build-log
-          path: full_build.log
-
-      # 如果构建失败，也提取错误摘要
+      # 如果构建失败，上传错误摘要
       - name: Extract error summary on failure
         if: steps.build.outcome == 'failure'
         run: |
