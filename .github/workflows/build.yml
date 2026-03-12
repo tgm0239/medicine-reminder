@@ -9,9 +9,7 @@ jobs:
       image: kivy/buildozer:latest
     steps:
       - uses: actions/checkout@v4
-
-      # 写入正确的 buildozer.spec（只编译 arm64-v8a）
-      - name: Write correct buildozer.spec
+      - name: Write buildozer.spec
         run: |
           echo "[app]" > buildozer.spec
           echo "title = 吃药提醒" >> buildozer.spec
@@ -37,45 +35,7 @@ jobs:
           echo "[buildozer]" >> buildozer.spec
           echo "log_level = 2" >> buildozer.spec
           echo "warn_on_root = 1" >> buildozer.spec
-
-      # 构建 APK（超时 30 分钟）
-      - name: Build APK with Buildozer
-        id: build
-        continue-on-error: true
-        timeout-minutes: 30
+      - name: Build APK
         run: |
           cd $GITHUB_WORKSPACE
-          yes | buildozer -v android debug 2>&1 | tee full_build.log
-
-      # 查找 APK 文件
-      - name: Find APK files
-        id: find_apk
-        run: |
-          echo "Searching for APK files..."
-          find $GITHUB_WORKSPACE -name "*.apk" -type f > apk_list.txt
-          cat apk_list.txt
-          if [ -s apk_list.txt ]; then
-            echo "found=true" >> $GITHUB_OUTPUT
-          else
-            echo "found=false" >> $GITHUB_OUTPUT
-          fi
-
-      # 如果找到 APK，上传
-      - name: Upload APK
-        if: steps.find_apk.outputs.found == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: $(cat apk_list.txt)
-
-      # 如果构建失败，上传错误摘要
-      - name: Extract error summary on failure
-        if: steps.build.outcome == 'failure'
-        run: |
-          grep -i -E 'error|failed|traceback|exception' full_build.log | tail -50 > error_summary.txt || true
-      - name: Upload error summary
-        if: steps.build.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: error-summary
-          path: error_summary.txt
+          yes | buildozer -v android debug
